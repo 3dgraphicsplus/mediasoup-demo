@@ -42,7 +42,7 @@ $ cp config.example.js config.js
 
 ```bash
 $ cd app
-$ npm install
+$ yarn
 ```
 
 
@@ -63,7 +63,6 @@ $ npm start
 
 ```bash
 $ cd app
-$ yarn
 $ npm start
 ```
 
