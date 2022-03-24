@@ -63,6 +63,7 @@ $ npm start
 
 ```bash
 $ cd app
+$ yarn
 $ npm start
 ```
 
