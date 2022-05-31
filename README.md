@@ -42,7 +42,7 @@ $ cp config.example.js config.js
 
 ```bash
 $ cd app
-$ npm install
+$ yarn
 ```
 
 
@@ -52,6 +52,10 @@ $ npm install
 
 ```bash
 $ cd server
+$ mkdir certs
+$ openssl genrsa > certs/privkey.pem
+$ openssl req -new -x509 -key certs/privkey.pem > certs/fullchain.pem
+
 $ npm start
 ```
 
