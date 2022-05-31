@@ -53,6 +53,8 @@ const mediasoupWorkers = [];
 // @type {Number}
 let nextMediasoupWorkerIdx = 0;
 
+let producerId;
+
 run();
 
 async function run()
@@ -173,7 +175,7 @@ async function createExpressApp()
 	 * POST API to create a Broadcaster.
 	 */
 	expressApp.post(
-		'/rooms/:roomId/broadcasters', async (req, res, next) =>
+		'/rooms/:roomId/join', async (req, res, next) =>
 		{
 			const {
 				id,
@@ -184,7 +186,7 @@ async function createExpressApp()
 
 			try
 			{
-				const data = await req.room.createBroadcaster(
+				const data = await req.room.join(
 					{
 						id,
 						displayName,
@@ -224,16 +226,19 @@ async function createExpressApp()
 		async (req, res, next) =>
 		{
 			const { broadcasterId } = req.params;
-			const { type, rtcpMux, comedia, sctpCapabilities } = req.body;
-
+			const { type, rtcpMux, comedia, ip, port, sctpCapabilities } = req.body;
+			console.log("Create transport: ")
+			console.log( req.body)
 			try
 			{
-				const data = await req.room.createBroadcasterTransport(
+				const data = await req.room.createTransport(
 					{
 						broadcasterId,
 						type,
 						rtcpMux,
 						comedia, 
+						ip,
+						port,
 						sctpCapabilities
 					});
 
@@ -295,7 +300,11 @@ async function createExpressApp()
 						kind,
 						rtpParameters
 					});
-
+					if(kind == "video"){
+						producerId = data.id;
+						console.log("broadcasterId id --------------- " + broadcasterId);
+						console.log("producer id --------------- " + producerId);
+					}
 				res.status(200).json(data);
 			}
 			catch (error)
@@ -315,10 +324,11 @@ async function createExpressApp()
 		async (req, res, next) =>
 		{
 			const { broadcasterId, transportId } = req.params;
-			const { producerId } = req.query;
 
 			try
 			{
+				
+				console.log("producer id ---------- " + producerId);
 				const data = await req.room.createBroadcasterConsumer(
 					{
 						broadcasterId,

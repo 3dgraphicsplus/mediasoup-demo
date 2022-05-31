@@ -62,12 +62,11 @@ fi
 
 set -e
 
-BROADCASTER_ID=$(LC_CTYPE=C tr -dc A-Za-z0-9 < /dev/urandom | fold -w ${1:-32} | head -n 1)
+RECEIVER_ID=$(LC_CTYPE=C tr -dc A-Za-z0-9 < /dev/urandom | fold -w ${1:-32} | head -n 1)
 HTTPIE_COMMAND="http --check-status  --verify=no "
 
 VIDEO_SSRC=2222
 VIDEO_PT=101
-
 #
 # Verify that a room with id ROOM_ID does exist by sending a simlpe HTTP GET. If
 # not abort since we are not allowed to initiate a room..
@@ -76,6 +75,7 @@ echo ">>> verifying that room '${ROOM_ID}' exists..."
 
 ${HTTPIE_COMMAND} \
 	GET ${SERVER_URL}/rooms/${ROOM_ID} > /dev/null
+
 
 #
 # Create a Broadcaster entity in the server by sending a POST with our metadata.
@@ -87,8 +87,9 @@ echo ">>> creating Broadcaster..."
 
 ${HTTPIE_COMMAND} \
 	POST ${SERVER_URL}/rooms/${ROOM_ID}/join \
-	id="${BROADCASTER_ID}" \
-	displayName="Broadcaster" \
+	id="${RECEIVER_ID}" \
+	displayName="Receiver" \
+	rtpCapabilities:="{ \"codecs\": [{ \"mimeType\":\"video/VP8\", \"payloadType\":${VIDEO_PT}, \"clockRate\":90000 }], \"encodings\": [{ \"ssrc\":${VIDEO_SSRC} }] }" \
 	device:='{"name": "FFmpeg"}' \
 	> /dev/null
 
@@ -96,38 +97,43 @@ ${HTTPIE_COMMAND} \
 # Upon script termination delete the Broadcaster in the server by sending a
 # HTTP DELETE.
 #
-trap 'echo ">>> script exited with status code $?"; ${HTTPIE_COMMAND} DELETE ${SERVER_URL}/rooms/${ROOM_ID}/broadcasters/${BROADCASTER_ID} > /dev/null' EXIT
+trap 'echo ">>> script exited with status code $?"; ${HTTPIE_COMMAND} DELETE ${SERVER_URL}/rooms/${ROOM_ID}/broadcasters/${RECEIVER_ID} > /dev/null' EXIT
+
 
 #
 # Create a PlainTransport in the mediasoup to send our video using plain RTP
 # over UDP. Do it via HTTP post specifying type:"plain" and comedia:true and
 # rtcpMux:false.
 #
-echo ">>> creating mediasoup PlainTransport for producing video..."
+echo ">>> creating mediasoup PlainTransport for consuming video..."
 
 res=$(${HTTPIE_COMMAND} \
-	POST ${SERVER_URL}/rooms/${ROOM_ID}/broadcasters/${BROADCASTER_ID}/transports \
+	POST ${SERVER_URL}/rooms/${ROOM_ID}/broadcasters/${RECEIVER_ID}/transports \
 	type="plain" \
-	comedia:=true \
+	comedia:=false \
 	rtcpMux:=false \
+	ip="127.0.0.1" \
+	port:=5006 \
 	2> /dev/null)
 
 #
 # Parse JSON response into Shell variables and extract the PlainTransport id,
 # IP, port and RTCP port.
 #
-eval "$(echo ${res} | jq -r '@sh "videoTransportId=\(.id) videoTransportIp=\(.ip) videoTransportPort=\(.port) videoTransportRtcpPort=\(.rtcpPort)"')"
+eval "$(echo ${res} | jq -r '@sh "videoTransportId=\(.id)"')"
+
+
 
 #
 # Create a mediasoup Producer to send video by sending our RTP parameters via a
 # HTTP POST.
 #
-echo ">>> creating mediasoup video Producer..."
+echo ">>> creating mediasoup video consumer... ${videoTransportId}"
 
 ${HTTPIE_COMMAND} -v \
-	POST ${SERVER_URL}/rooms/${ROOM_ID}/broadcasters/${BROADCASTER_ID}/transports/${videoTransportId}/producers \
+	POST ${SERVER_URL}/rooms/${ROOM_ID}/broadcasters/${RECEIVER_ID}/transports/${videoTransportId}/consume \
 	kind="video" \
-	rtpParameters:="{ \"codecs\": [{ \"mimeType\":\"video/VP8\", \"payloadType\":${VIDEO_PT}, \"clockRate\":90000 }], \"encodings\": [{ \"ssrc\":${VIDEO_SSRC} }] }" \
+	rtpCapabilities:="{ \"codecs\": [{ \"mimeType\":\"video/VP8\", \"payloadType\":${VIDEO_PT}, \"clockRate\":90000 }], \"encodings\": [{ \"ssrc\":${VIDEO_SSRC} }] }" \
 	> /dev/null
 
 #
@@ -136,21 +142,24 @@ ${HTTPIE_COMMAND} -v \
 # creation above. Also, tell ffmpeg to send the RTP to the mediasoup
 # PlainTransports' ip and port.
 #
-echo ">>> running ffmpeg... ${videoTransportIp}:${videoTransportPort}"
+echo ">>> running ffmpeg..."
 
 #
 # NOTES:
 # - We can add ?pkt_size=1200 to each rtp:// URI to limit the max packet size
 #   to 1200 bytes.
 #
-ffmpeg \
-	 \
-	-re \
-	-v info \
-	-stream_loop -1 \
-	-i ${MEDIA_FILE} \
-	-map 0:v:0 \
-	-pix_fmt yuv420p -c:v libvpx -b:v 1000k -s 1280x720 -deadline realtime -cpu-used 4 \
-	-f tee \
-	"[select=v:f=rtp:ssrc=${VIDEO_SSRC}:payload_type=${VIDEO_PT}]rtp://${videoTransportIp}:${videoTransportPort}?rtcpport=${videoTransportRtcpPort}"
 
+#!/usr/bin/env bash
+# ffmpeg \
+# 	-analyzeduration 100 \
+#      -nostdin \
+#      -protocol_whitelist file,rtp,udp \
+#      -fflags +genpts \
+#      -i input-vp8.sdp \
+# 	 -an \
+# 	 -s 1280x720 -vcodec libvpx \
+#      -f webm -flags +global_header \
+#      -y output-ffmpeg-vp8.webm
+
+ffplay -fflags nobuffer -protocol_whitelist file,rtp,udp -i input-vp8.sdp -loglevel debug

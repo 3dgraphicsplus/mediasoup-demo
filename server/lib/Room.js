@@ -268,7 +268,7 @@ class Room extends EventEmitter
 	 * @type {Object} [device] - Additional info with name, version and flags fields.
 	 * @type {RTCRtpCapabilities} [rtpCapabilities] - Device RTP capabilities.
 	 */
-	async createBroadcaster({ id, displayName, device = {}, rtpCapabilities })
+	async join({ id, displayName, device = {}, rtpCapabilities })
 	{
 		if (typeof id !== 'string' || !id)
 			throw new TypeError('missing body.id');
@@ -360,9 +360,11 @@ class Room extends EventEmitter
 				peerInfos.push(peerInfo);
 			}
 		}
-
+		console.log("peerInfos: ");
+		console.log(peerInfos);
 		return { peers: peerInfos };
 	}
+
 
 	/**
 	 * Delete a Broadcaster.
@@ -404,12 +406,14 @@ class Room extends EventEmitter
 	 *   autodetection.
 	 * @type {Object} [sctpCapabilities] - SCTP capabilities
 	 */
-	async createBroadcasterTransport(
+	async createTransport(
 		{
 			broadcasterId,
 			type,
 			rtcpMux = false,
 			comedia = true,
+			ip = undefined,
+			port = 0,
 			sctpCapabilities
 		})
 	{
@@ -457,8 +461,32 @@ class Room extends EventEmitter
 					plainTransportOptions);
 
 				// Store it.
-				broadcaster.data.transports.set(transport.id, transport);
-
+				if(broadcaster)
+					broadcaster.data.transports.set(transport.id, transport);
+				
+				if (ip){
+					await transport.connect({ 
+						ip: ip,
+						port: port,
+						rtcpPort: 5007 });
+						console.log(
+							"mediasoup VIDEO RTP SEND transport connected: %s:%d <--> %s:%d (%s)",
+							transport.tuple.localIp,
+							transport.tuple.localPort,
+							transport.tuple.remoteIp,
+							transport.tuple.remotePort,
+							transport.tuple.protocol
+						  );
+					  
+						  console.log(
+							"mediasoup VIDEO RTCP SEND transport connected: %s:%d <--> %s:%d (%s)",
+							transport.rtcpTuple.localIp,
+							transport.rtcpTuple.localPort,
+							transport.rtcpTuple.remoteIp,
+							transport.rtcpTuple.remotePort,
+							transport.rtcpTuple.protocol
+						  );
+				}
 				return {
 					id       : transport.id,
 					ip       : transport.tuple.localIp,
@@ -614,9 +642,10 @@ class Room extends EventEmitter
 		const consumer = await transport.consume(
 			{
 				producerId,
-				rtpCapabilities : broadcaster.data.rtpCapabilities
+				paused          : true,
+				rtpCapabilities : broadcaster.data.rtpCapabilities?broadcaster.data.rtpCapabilities:this.getRouterRtpCapabilities()//use server caps if unset
 			});
-
+			await consumer.resume();
 		// Store it.
 		broadcaster.data.consumers.set(consumer.id, consumer);
 
