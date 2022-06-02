@@ -69,7 +69,7 @@ VIDEO_SSRC=2222
 #vp8
 #VIDEO_PT=101
 #h264
-VIDEO_PT=125
+VIDEO_PT=126
 
 #
 # Verify that a room with id ROOM_ID does exist by sending a simlpe HTTP GET. If
@@ -93,7 +93,7 @@ ${HTTPIE_COMMAND} \
 	POST ${SERVER_URL}/rooms/${ROOM_ID}/join \
 	id="${RECEIVER_ID}" \
 	displayName="Receiver" \
-	rtpCapabilities:="{ \"codecs\": [{ \"mimeType\":\"video/H264\", \"payloadType\":${VIDEO_PT}, \"clockRate\":90000, \"parameters\": {\"level-asymmetry-allowed\": 1, \"packetization-mode\": 1,\"profile-level-id\": \"42e01f\"} }],\"encodings\": [{ \"ssrc\":${VIDEO_SSRC} }] }" \
+	rtpCapabilities:="{ \"codecs\": [{ \"mimeType\":\"video/H265\", \"payloadType\":${VIDEO_PT}, \"clockRate\":90000, \"parameters\": {\"level-asymmetry-allowed\": 1, \"packetization-mode\": 1,\"profile-level-id\": \"42e01f\"} }],\"encodings\": [{ \"ssrc\":${VIDEO_SSRC} }] }" \
 	device:='{"name": "FFmpeg"}' \
 	> /dev/null
 
@@ -137,7 +137,7 @@ echo ">>> creating mediasoup video consumer... ${videoTransportId}"
 ${HTTPIE_COMMAND} -v \
 	POST ${SERVER_URL}/rooms/${ROOM_ID}/broadcasters/${RECEIVER_ID}/transports/${videoTransportId}/consume \
 	kind="video" \
-	rtpCapabilities:="{ \"codecs\": [{ \"mimeType\":\"video/H264\", \"payloadType\":${VIDEO_PT}, \"clockRate\":90000, \"parameters\": {\"level-asymmetry-allowed\": 1, \"packetization-mode\": 1,\"profile-level-id\": \"42e01f\"} }],\"encodings\": [{ \"ssrc\":${VIDEO_SSRC} }] }" \
+	rtpCapabilities:="{ \"codecs\": [{ \"mimeType\":\"video/H265\", \"payloadType\":${VIDEO_PT}, \"clockRate\":90000, \"parameters\": {\"level-asymmetry-allowed\": 1, \"packetization-mode\": 1,\"profile-level-id\": \"42e01f\"} }],\"encodings\": [{ \"ssrc\":${VIDEO_SSRC} }] }" \
 	> /dev/null
 
 #
@@ -166,4 +166,4 @@ echo ">>> running ffmpeg..."
 #      -f webm -flags +global_header \
 #      -y output-ffmpeg-vp8.webm
 
-ffplay -fflags nobuffer -protocol_whitelist file,rtp,udp -i input-x264.sdp -loglevel debug
+ffplay -fflags nobuffer -protocol_whitelist file,rtp,udp -i input-x265.sdp -loglevel debug

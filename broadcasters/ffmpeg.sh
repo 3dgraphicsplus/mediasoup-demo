@@ -69,7 +69,7 @@ VIDEO_SSRC=2222
 #vp8
 #VIDEO_PT=101
 #h264
-VIDEO_PT=125
+VIDEO_PT=126
 
 #
 # Verify that a room with id ROOM_ID does exist by sending a simlpe HTTP GET. If
@@ -130,7 +130,7 @@ echo ">>> creating mediasoup video Producer..."
 ${HTTPIE_COMMAND} -v \
 	POST ${SERVER_URL}/rooms/${ROOM_ID}/broadcasters/${BROADCASTER_ID}/transports/${videoTransportId}/producers \
 	kind="video" \
-	rtpParameters:="{ \"codecs\": [{ \"mimeType\":\"video/H264\", \"payloadType\":${VIDEO_PT}, \"clockRate\":90000, \"parameters\": {\"level-asymmetry-allowed\": 1, \"packetization-mode\": 1,\"profile-level-id\": \"42e01f\"} }],\"encodings\": [{ \"ssrc\":${VIDEO_SSRC} }] }" \
+	rtpParameters:="{ \"codecs\": [{ \"mimeType\":\"video/H265\", \"payloadType\":${VIDEO_PT}, \"clockRate\":90000, \"parameters\": {\"level-asymmetry-allowed\": 1, \"packetization-mode\": 1,\"profile-level-id\": \"42e01f\"} }],\"encodings\": [{ \"ssrc\":${VIDEO_SSRC} }] }" \
 	> /dev/null
 
 #
@@ -166,7 +166,7 @@ ffmpeg \
 	-stream_loop -1 \
 	-i ${MEDIA_FILE} \
 	-map 0:v:0 \
-	-pix_fmt yuv420p -c:v libx264 -b:v 1000k -s 1280x720 -deadline realtime -cpu-used 4 \
+	-pix_fmt yuv420p -c:v libx265 -b:v 1000k -s 1280x720 -deadline realtime \
 	-f tee \
 	"[select=v:f=rtp:ssrc=${VIDEO_SSRC}:payload_type=${VIDEO_PT}]rtp://${videoTransportIp}:${videoTransportPort}?rtcpport=${videoTransportRtcpPort}"
 
