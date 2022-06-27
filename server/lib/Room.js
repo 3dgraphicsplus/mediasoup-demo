@@ -454,7 +454,9 @@ class Room extends EventEmitter
 				{
 					...config.mediasoup.plainTransportOptions,
 					rtcpMux : rtcpMux,
-					comedia : comedia
+					comedia : comedia,
+					
+					enableSrtp: true
 				};
 
 				const transport = await this._mediasoupRouter.createPlainTransport(
@@ -463,30 +465,44 @@ class Room extends EventEmitter
 				// Store it.
 				if(broadcaster)
 					broadcaster.data.transports.set(transport.id, transport);
-				
+				const srtpKey = Buffer.from("I_am_srtp_key_30_bytes_1234567").toString('base64')
+				console.log("srtpKey " + srtpKey + " as  base64");
 				if (ip){
-					await transport.connect({ 
+					await transport.connect({
+						srtpParameters:{
+							cryptoSuite: "AES_CM_128_HMAC_SHA1_80",
+							keyBase64: srtpKey,
+						},
 						ip: ip,
 						port: port,
 						rtcpPort: 5007 });
-						console.log(
-							"mediasoup VIDEO RTP SEND transport connected: %s:%d <--> %s:%d (%s)",
-							transport.tuple.localIp,
-							transport.tuple.localPort,
-							transport.tuple.remoteIp,
-							transport.tuple.remotePort,
-							transport.tuple.protocol
-						  );
-					  
-						  console.log(
-							"mediasoup VIDEO RTCP SEND transport connected: %s:%d <--> %s:%d (%s)",
-							transport.rtcpTuple.localIp,
-							transport.rtcpTuple.localPort,
-							transport.rtcpTuple.remoteIp,
-							transport.rtcpTuple.remotePort,
-							transport.rtcpTuple.protocol
-						  );
+				}else{
+					
+					await transport.connect({
+						srtpParameters:{
+							cryptoSuite: "AES_CM_128_HMAC_SHA1_80",
+							keyBase64: srtpKey
+						}})
+
 				}
+				
+				console.log(
+					"mediasoup VIDEO RTP  transport connected: %s:%d <--> %s:%d (%s)",
+					transport.tuple.localIp,
+					transport.tuple.localPort,
+					transport.tuple.remoteIp,
+					transport.tuple.remotePort,
+					transport.tuple.protocol
+				  );
+			  
+				  console.log(
+					"mediasoup VIDEO RTCP  transport connected: %s:%d <--> %s:%d (%s)",
+					transport.rtcpTuple.localIp,
+					transport.rtcpTuple.localPort,
+					transport.rtcpTuple.remoteIp,
+					transport.rtcpTuple.remotePort,
+					transport.rtcpTuple.protocol
+				  );
 				return {
 					id       : transport.id,
 					ip       : transport.tuple.localIp,

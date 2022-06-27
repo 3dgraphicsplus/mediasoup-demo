@@ -5,5 +5,6 @@ c=IN IP4 127.0.0.1
 t=0 0
 m=video 5006 RTP/AVP 125
 a=rtcp:5007
-a=rtpmap:125 H265/90000
+a=rtpmap:125 H264/90000
 a=fmtp:125 packetization-mode=1; profile-level-id=42C01F
+a=crypto:1 AES_CM_128_HMAC_SHA1_80 inline:SV9hbV9zcnRwX2tleV8zMF9ieXRlc18xMjM0NTY3
